@@ -42,7 +42,6 @@ npm run dev   # http://localhost:5173
 | GET | `/health` | Health check + live counters |
 | GET | `/api/metrics/revenue` | Per-minute transfer totals |
 | GET | `/api/metrics/whales` | Top-10 users by volume |
-| GET | `/api/metrics/devices` | Top-10 active devices |
 | GET | `/api/metrics/auth` | Auth funnel stats |
 | GET | `/api/user/{id}/profile` | User velocity profile from HBase |
 | GET | `/api/user/{id}/history` | Last 10 user events from HBase |
