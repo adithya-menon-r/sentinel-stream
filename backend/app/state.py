@@ -1,17 +1,10 @@
-"""
-app/state.py — Global in-memory state shared across scanner tasks and endpoints.
-
-All variables are module-level singletons mutated directly by importers.
-No locks are needed: asyncio is single-threaded and Counter/defaultdict
-operations are atomic at the CPython level.
-"""
 import collections
 from typing import Dict
 
 # Per-minute transfer totals: "HH:MM AM/PM" → cumulative USD
 minute_revenue: Dict[str, float] = collections.defaultdict(float)
 
-# Total money moved per user_id (Whales leaderboard)
+# Total money per user_id
 user_totals: collections.Counter = collections.Counter()
 
 # Raw event hits per device ID
