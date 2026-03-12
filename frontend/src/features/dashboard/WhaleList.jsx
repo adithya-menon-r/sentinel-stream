@@ -31,7 +31,7 @@ export default function WhaleList({ whales }) {
               <span className="text-cyber-blue font-semibold grow">{whale.user_id}</span>
               <div className="flex items-center gap-1 text-cyber-gold">
                 <DollarSign className="w-3 h-3" />
-                <span>{formatCurrency(whale.total_amount)}</span>
+                <span>{whale.total_amount}</span>
               </div>
             </div>
           ))

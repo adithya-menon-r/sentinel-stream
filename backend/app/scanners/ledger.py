@@ -23,7 +23,7 @@ import happybase
 
 from app.core.config   import settings, BRUTE_FORCE_THRESH, HEX_SALTS, TABLE_EVENT_LEDGER
 from app.db.hbase_pool import reverse_ts_to_minute
-from app.state         import auth_funnel, device_counts, minute_revenue, user_totals
+from app.state         import auth_funnel, device_counts, minute_revenue
 from app.services.ws_manager import manager
 
 log = logging.getLogger("ids.scanner.ledger")
@@ -101,10 +101,6 @@ async def ledger_scanner_loop() -> None:
                         # ── Revenue per minute (successful transfers only) ───
                         if ev_type == "transfer_attempt" and status == "SUCCESS":
                             minute_revenue[reverse_ts_to_minute(reverse_ts_str)] += amt
-
-                        # ── Whale tracker (Successful money moves only) ───────────────
-                        if ev_type == "transfer_attempt" and status == "SUCCESS" and amt > 0:
-                            user_totals[user_id] += amt
 
                         # ── Device hit counter ───────────────────────────────
                         if dev_id:

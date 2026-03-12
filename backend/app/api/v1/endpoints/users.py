@@ -52,6 +52,23 @@ def get_user_profile(user_id: str):
                     "tx_sum_usd": round(tx_sum / 100, 2),
                 })
 
+            # Some datasets populate tx_sum_cents but not tx_count in velocity
+            # counters. Fallback to ledger-derived successful transfer count so
+            # Investigate does not show zero for active users.
+            if total_tx_count == 0 and total_tx_sum_cents > 0:
+                ledger_table = conn.table(TABLE_EVENT_LEDGER)
+                for _, ev in ledger_table.scan(row_prefix=prefix):
+                    ev_type = ev.get(b"m:type", b"").decode("utf-8")
+                    status = ev.get(b"m:status", b"").decode("utf-8")
+                    amt_raw = ev.get(b"m:amt", b"0").decode("utf-8")
+                    try:
+                        amt = float(amt_raw)
+                    except ValueError:
+                        amt = 0.0
+
+                    if ev_type == "transfer_attempt" and status.upper() == "SUCCESS" and amt > 0:
+                        total_tx_count += 1
+
             if not buckets:
                 raise HTTPException(
                     status_code=404,
