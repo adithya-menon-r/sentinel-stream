@@ -1,14 +1,6 @@
-"""
-Background Task 2 — Counter Table Scanner.
-
-Runs every 2 seconds, scanning user_velocity_counters and entity_risk_counters
-for threshold breaches.  Broadcasts WebSocket alerts with session-scoped
-deduplication so the same entity is never re-alerted.
-"""
 import asyncio
 import logging
 import time
-
 import happybase
 
 from app.core.config import (
@@ -26,17 +18,13 @@ log = logging.getLogger("ids.scanner.counters")
 
 
 async def counter_scanner_loop() -> None:
-    """Infinite loop — scans velocity and risk counter tables every 2 seconds."""
     log.info("Counter scanner started.")
 
     while True:
         try:
             conn = happybase.Connection(settings.HBASE_HOST, port=settings.HBASE_PORT)
             try:
-                # ── Velocity Fraud ─────────────────────────────────────────────
                 vel_table = conn.table(TABLE_VELOCITY)
-                # Snapshot user totals from velocity counters so Whale leaderboard
-                # stays aligned with Investigate profile totals.
                 user_totals_cents: dict[str, int] = {}
                 for row_key_bytes, data in vel_table.scan(batch_size=500):
                     parts = row_key_bytes.decode("utf-8").split("-")
@@ -49,21 +37,19 @@ async def counter_scanner_loop() -> None:
 
                     if tx_sum > VELOCITY_SUM_ALERT and user_id not in alerted_velocity:
                         alerted_velocity.add(user_id)
-                        log.warning("Velocity Fraud: user=%s  sum=$%.2f", user_id, tx_sum / 100)
+                        log.warning("Rapid Transfers: user=%s  sum=$%.2f", user_id, tx_sum / 100)
                         await manager.broadcast({
                             "type":    "ALERT",
-                            "pattern": "Velocity Fraud",
+                            "pattern": "Rapid Transfers",
                             "entity":  user_id,
-                            "detail":  f"Total transfer sum ${tx_sum / 100:,.2f} exceeds threshold.",
+                            "detail":  f"Total transfer sum ₹{tx_sum / 100:,.2f} exceeds threshold.",
                             "ts":      time.strftime("%H:%M:%S"),
                         })
 
-                # Bootstrap + continuous sync: refresh in-memory whale totals
-                # from authoritative counter-table aggregates each scan cycle.
                 user_totals.clear()
                 user_totals.update({uid: cents / 100 for uid, cents in user_totals_cents.items()})
 
-                # ── Toxic Node ─────────────────────────────────────────────────
+                # Suspicious Node 
                 risk_table = conn.table(TABLE_RISK)
                 for row_key_bytes, data in risk_table.scan(batch_size=500):
                     parts = row_key_bytes.decode("utf-8").split("-")
@@ -74,10 +60,10 @@ async def counter_scanner_loop() -> None:
 
                     if interactions > TOXIC_HITS_ALERT and dev_id not in alerted_toxic:
                         alerted_toxic.add(dev_id)
-                        log.warning("Toxic Node: dev=%s  interactions=%d", dev_id, interactions)
+                        log.warning("Suspicious Node: dev=%s  interactions=%d", dev_id, interactions)
                         await manager.broadcast({
                             "type":    "ALERT",
-                            "pattern": "Toxic Node",
+                            "pattern": "Suspicious Node",
                             "entity":  dev_id,
                             "detail":  f"Device interacted with {interactions} distinct accounts.",
                             "ts":      time.strftime("%H:%M:%S"),
@@ -87,6 +73,6 @@ async def counter_scanner_loop() -> None:
                 conn.close()
 
         except Exception:
-            log.exception("Counter scanner error — retrying next cycle")
+            log.exception("Counter scanner error - retrying next cycle")
 
         await asyncio.sleep(2)

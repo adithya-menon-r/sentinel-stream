@@ -3,25 +3,15 @@
  * Used by AlertFeed (dashboard) and any future alert-aware component.
  */
 export const PATTERN_STYLES = {
-  "Mass Brute Force": {
-    bg: "bg-red-500/15",
-    text: "text-red-400",
-    border: "border-red-500/30",
-  },
-  "Toxic Node": {
+  "Suspicious Node": {
     bg: "bg-orange-500/15",
     text: "text-orange-400",
     border: "border-orange-500/30",
   },
-  "Velocity Fraud": {
+  "Rapid Transfers": {
     bg: "bg-yellow-500/15",
     text: "text-yellow-400",
     border: "border-yellow-500/30",
-  },
-  "Account Takeover": {
-    bg: "bg-purple-500/15",
-    text: "text-purple-400",
-    border: "border-purple-500/30",
   },
 };
 

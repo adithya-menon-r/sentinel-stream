@@ -1,13 +1,11 @@
 import asyncio
 import logging
-import time
 
 import happybase
 
-from app.core.config   import settings, BRUTE_FORCE_THRESH, HEX_SALTS, TABLE_EVENT_LEDGER
+from app.core.config   import settings, HEX_SALTS, TABLE_EVENT_LEDGER
 from app.db.hbase_pool import reverse_ts_to_minute
-from app.state         import auth_funnel, device_counts, minute_revenue
-from app.services.ws_manager import manager
+from app.state         import auth_funnel, device_counts, minute_revenue, user_totals
 
 log = logging.getLogger("ids.scanner.ledger")
 
@@ -24,13 +22,11 @@ def _salt_stop(salt: str) -> bytes:
 
 
 async def ledger_scanner_loop() -> None:
-    # Infinite loop — progressively scans user_event_ledger every second.
+    # Infinite loop progressively scans user_event_ledger every second.
     log.info("Ledger scanner started (cursor-based delta; happybase 1.2 compatible).")
 
     while True:
         try:
-            batch_failed = 0
-
             conn = happybase.Connection(settings.HBASE_HOST, port=settings.HBASE_PORT)
             try:
                 table = conn.table(TABLE_EVENT_LEDGER)
@@ -92,7 +88,6 @@ async def ledger_scanner_loop() -> None:
                             auth_funnel["success"] += 1
                         elif ev_type == "login_failed":
                             auth_funnel["failed"] += 1
-                            batch_failed += 1
 
                     # Advance or wrap cursor 
                     if rows_this_salt < ROWS_PER_SALT or last_key is None:
@@ -101,16 +96,6 @@ async def ledger_scanner_loop() -> None:
                     else:
                         # More rows exist ahead — step past the last row seen
                         _salt_cursors[salt] = last_key + b"\x00"
-
-                # Brute-force alert 
-                if batch_failed > BRUTE_FORCE_THRESH:
-                    log.warning("Mass Brute Force: %d new failures this cycle", batch_failed)
-                    await manager.broadcast({
-                        "type":    "ALERT",
-                        "pattern": "Mass Brute Force",
-                        "detail":  f"{batch_failed} new login_failed events detected in the last scan cycle.",
-                        "ts":      time.strftime("%H:%M:%S"),
-                    })
 
                 # Evict seen-set when memory ceiling is hit 
                 if len(_seen_rows) > MEM_LIMIT_ROWS:

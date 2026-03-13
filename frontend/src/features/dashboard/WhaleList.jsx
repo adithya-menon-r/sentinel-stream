@@ -8,7 +8,7 @@ export default function WhaleList({ whales }) {
       <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-b border-slate-800">
         <Crown className="w-4 h-4 text-cyber-gold" />
         <h2 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
-          Whale Leaderboard
+          Whale Accounts
         </h2>
         <span className="ml-auto text-xs text-slate-500 font-mono">
           Top 10
@@ -30,8 +30,7 @@ export default function WhaleList({ whales }) {
               <span className="w-4 text-slate-500">{i + 1}.</span>
               <span className="text-cyber-blue font-semibold grow">{whale.user_id}</span>
               <div className="flex items-center gap-1 text-cyber-gold">
-                <DollarSign className="w-3 h-3" />
-                <span>{whale.total_amount}</span>
+                <span>₹ {whale.total_amount}</span>
               </div>
             </div>
           ))

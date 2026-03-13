@@ -51,7 +51,5 @@ npm run dev   # http://localhost:5173
 
 | Pattern | Trigger |
 |---------|---------|
-| Velocity Fraud | User transfers > $10,000 total in session |
-| Toxic Node | Device touches > 50 distinct accounts in a day |
-| Mass Brute Force | > 50 `login_failed` events in a 1-second scan cycle |
-| Account Takeover | `login_failed` → `password_reset` → `login_success` (new IP/device) → `transfer_attempt` within 5 minutes |
+| Rapid Transfers | User transfers > $10,000 total in session |
+| Suspicious Node | Device touches > 50 distinct accounts in a day |

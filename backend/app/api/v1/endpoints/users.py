@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/user", tags=["users"])
 def get_user_profile(user_id: str):
     """Fetch velocity counters for a user directly from HBase.
 
-    Performs a row-prefix scan on user_velocity_counters and aggregates all
+    Performs a row-prefix scan on user_activity and aggregates all
     hourly buckets for the given user.
     """
     salt   = get_salt(user_id)
@@ -93,7 +93,7 @@ def get_user_profile(user_id: str):
 
 @router.get("/{user_id}/history")
 def get_user_history(user_id: str):
-    """Return the 10 most recent events for a user from user_event_ledger.
+    """Return the 10 most recent events for a user from events.
 
     Because row keys embed a reverse timestamp, the first rows HBase returns
     are the *newest* — no client-side sorting needed.
