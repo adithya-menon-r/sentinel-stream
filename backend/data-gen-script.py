@@ -8,7 +8,7 @@ import os
 
 # Config
 HBASE_MASTER_IP = '127.0.0.1' 
-BATCH_SIZE = 2000 
+BATCH_SIZE = 200 
 NUM_WORKERS = multiprocessing.cpu_count() 
 NUM_USERS = 2500
 
@@ -70,6 +70,8 @@ def worker(worker_id):
             day_bucket = time.strftime('%Y%m%d', time.gmtime(current_ts / 1000.0)).encode('utf-8')
             
             brute_force_active = os.path.exists("attack.txt")
+            rapid_active = os.path.exists("rapid.txt")
+            suspicious_active = os.path.exists("suspicious.txt")
             
             with events_table.batch(batch_size=BATCH_SIZE) as b:
                 events_in_batch = 0
@@ -94,8 +96,13 @@ def worker(worker_id):
 
                     roll = random.random()
                     
-                    # RAPID TRANSFERS - 0.75%
-                    if roll < 0.0075: 
+                    if rapid_active:
+                        roll = 0.0
+                    elif suspicious_active:
+                        roll = 0.015
+                    
+                    # RAPID TRANSFERS - 1%
+                    if roll < 0.01: 
                         u, d, ip = random.choice(USERS), random.choice(DEVICES), random.choice(IPS)
                         salt = USER_SALTS[u]
                         v_key = f"{salt}-{u}-".encode('utf-8') + hour_bucket
@@ -115,29 +122,7 @@ def worker(worker_id):
                             events_in_batch += 1
                         activity_table.counter_inc(v_key, b'v:tx_sum_cents', total_amt * 100)
 
-                    # ACCOUNT TAKEOVER - 0.75%
-                    elif roll < 0.015:
-                        u = random.choice(USERS)
-                        d = "HACK_" + os.urandom(2).hex()
-                        ip = "193.168.0.1"
-                        salt = USER_SALTS[u]
-                        
-                        sequence = [
-                            (TYPE_LOGIN_FAIL, VAL_FAILED, 0), (TYPE_LOGIN_FAIL, VAL_FAILED, 0),
-                            (TYPE_RESET, VAL_SUCCESS, 0), (TYPE_LOGIN_OK, VAL_SUCCESS, 0),
-                            (TYPE_TRANSFER, VAL_SUCCESS, 4500)
-                        ]
-                        for ev_type, status, amt in sequence:
-                            current_ts += 1
-                            r_ts = sys.maxsize - current_ts
-                            b.put(f"{salt}-{u}-{r_ts}".encode('utf-8'), {
-                                COL_TYPE: ev_type, COL_AMT: str(amt).encode('utf-8'),
-                                COL_IP: ip.encode('utf-8'), COL_DEV: d.encode('utf-8'),
-                                COL_STATUS: status, COL_RAW: VAL_AGENT
-                            })
-                            events_in_batch += 1
-
-                    # SUSPICIOUS NODE - 0.5%
+                    # SUSPICIOUS NODE - 1%
                     elif roll < 0.02:
                         d = random.choice(BOT_DEVICES)
                         d_salt = BOT_DEVICE_SALTS[d]
