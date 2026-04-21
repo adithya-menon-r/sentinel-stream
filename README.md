@@ -32,7 +32,7 @@ create 'risk_scores', {NAME => 'c', TTL => 604800},  SPLITS => ['4', '8', 'c']
 exit
 ```
 
-The `SPLITS` on the `user_activity` and `risk_scores` tables ensure that they are pre-partitioned into four regions (`0–3`, `4–7`, `8–b`, `c–f`). This is so that writes are distributed evenly across region servers from the start. `user_activity` rows expire after 30 days (TTL 2,592,000 seconds) and `risk_scores` rows after 7 days (TTL 604,800 seconds).
+The `SPLITS` on the `user_activity` and `risk_scores` tables ensure that they are pre-partitioned into four regions (`0–3`, `4–7`, `8–b`, `c–f`). This is so that data insertion is distributed evenly across the active region servers (2 in our case) . `user_activity` rows expire after 30 days (TTL 2,592,000 seconds) and `risk_scores` rows after 7 days (TTL 604,800 seconds).
 
 ### Backend
  
@@ -126,20 +126,20 @@ The simulation runs against a fixed pool of 2,500 users, 1,000 devices, and 1,00
 
 ### Event Distribution
 
-Each batch of 200 events has an independent distribution and produces the following mix:
+Each batch of 200 events has an independent distribution and generates events of the following mix:
 
 | Probability | Event Class          | Details                                                                                                                                                                                                                                                                                         |
 | ----------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 98%         | Normal events        | Random normal events from the user, device, and IP pools                                                                                                                                                                                                                                        |
-| 1%          | Rapid transfer burst | 5 back-to-back `transfer_attempt` events, each between $800 and $2000 from the same user and device in a single batch. This means cumulatively a session's transfer can be between $4000 - $10,000. If such bursts land close together, the user will definitely croos the detection threshold. |
-| 1%          | Suspicious node      | 1 bot device performs a `login_success` event and authenticates as 10 randomly sampled victim accounts from a fixed IP (`45.33.22.11`). Each successful login increments the `risk_scores` counter, eventually crossing the detection threshold.                                                |
+| 98%         | Normal events        | Random normal events from the full user, device, and IP pools                                                                                                                                                                                                                                        |
+| 1%          | Rapid transfer burst | 5 back-to-back `transfer_attempt` events, each between $800 and $2000 from the same user and device. This means cumulatively a session's transfer can be between $4000 - $10,000. If such bursts land close together, the user will definitely cross the detection threshold. |
+| 1%          | Suspicious node      | 1 bot device performs `login_success` events and authenticates as 10 randomly sampled victim accounts from a fixed IP (`45.33.22.11`). Each successful login increments the `risk_scores` counter, eventually crossing the detection threshold.                                                |
 
-Within the 98% normal slice, event are split further:
+Within the 98% normal slice, events are split further:
 
 | Probability | Type               | Amount Range                                                                                                    |
 | ----------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
 | ~30%        | `transfer_attempt` | $10 - $500 for regular users & $10,000 - $50,000 for whale users                                                |
-| ~70%        | `login_success`    | $0 _(Most real world events aren't transactions but simple events like authentication, account checking, etc.)_ |
+| ~70%        | `login_success`    | $0 _(Most real world events aren't monetary transactions but simple things like authentication, account checking, etc.)_ |
 
 
 ### Attack Modes
@@ -160,14 +160,14 @@ rm attack.txt      # Stop it
 
 ## Fraud Detection Patterns
 
-The backend continuously scans HBase and attempts to detect the two following patterns:
+The backend continuously scans HBase to detect the following patterns:
 
 | Pattern             | Trigger                                                                      |
 | ------------------- | ---------------------------------------------------------------------------- |
 | **Rapid Transfers** | A user's rolling hourly transfer total exceeds $10,000                       |
 | **Suspicious Node** | A single device authenticates as more than 50 distinct accounts within a day |
 
-Alerts are broadcast in real time over the `/ws/alerts` WebSocket endpoint as soon as a pattern matches.
+Alerts are broadcast in real time over the `/ws/alerts` WebSocket endpoint as soon as a pattern is matched.
 
 ## API Reference
 
@@ -177,7 +177,7 @@ Alerts are broadcast in real time over the `/ws/alerts` WebSocket endpoint as so
 | GET    | `/api/metrics/revenue`   | Per-minute transfer totals                   |
 | GET    | `/api/metrics/whales`    | Top 10 users by transfer volume              |
 | GET    | `/api/metrics/auth`      | Auth funnel stats (success vs failure rates) |
-| GET    | `/api/user/{id}/profile` | User velocity profile from HBase             |
+| GET    | `/api/user/{id}/profile` | User transaction profile from HBase             |
 | GET    | `/api/user/{id}/history` | Last 10 events for a user                    |
 | WS     | `/ws/alerts`             | Live fraud alerts                            |
 
